@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Login to your Personal Notes App account.">
+    <title>Login — Personal Notes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="auth-wrapper">
+        <div class="auth-card">
+
+            <!-- Logo / Header -->
+            <div class="auth-header">
+                <div class="auth-logo">📝</div>
+                <h1>Welcome Back</h1>
+                <p>Sign in to access your notes</p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <div class="input-icon-wrapper">
+                        <span class="input-icon">📧</span>
+                        <input type="email" id="loginEmail" placeholder="you@example.com" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <div class="input-icon-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full" id="loginBtn">🚀 Sign In</button>
+            </form>
+
+            <!-- Footer Link -->
+            <div class="auth-footer">
+                <p>Don't have an account? <a href="register.html" class="auth-link">Create one</a></p>
+            </div>
+
+        </div>
+
+        <!-- Floating decorative elements -->
+        <div class="auth-decor auth-decor-1"></div>
+        <div class="auth-decor auth-decor-2"></div>
+        <div class="auth-decor auth-decor-3"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const toastContainer = document.getElementById('toastContainer');
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+            toast.innerHTML = `<span>${icons[type] || '✅'}</span> ${message}`;
+            toastContainer.appendChild(toast);
+            setTimeout(() => {
+                if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, 3000);
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                showToast('Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => {
+                        window.location.href = '/index.html';
+                    }, 800);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (err) {
+                showToast('Login failed. Please try again.', 'error');
+            }
+        });
+
+        // If already logged in, redirect to notes
+        async function checkAuth() {
+            try {
+                const res = await fetch('/auth/me');
+                if (res.ok) {
+                    window.location.href = '/index.html';
+                }
+            } catch (err) { }
+        }
+        checkAuth();
+    </script>
+
+</body>
+</html>
