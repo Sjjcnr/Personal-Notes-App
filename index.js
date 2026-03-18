@@ -474,8 +474,11 @@ app.post("/notes/ai/generate", requireAuth, async (req, res) => {
 app.use(express.static(path.join(__dirname, 'client/dist')));
 
 // Catch-all route to hand over routing to React Router
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'client/dist', 'index.html'));
+app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/notes') && !req.path.startsWith('/auth')) {
+        res.sendFile(path.join(__dirname, 'client/dist', 'index.html'));
+    } else {
+        next();
+    }
 });
-
  
