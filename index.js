@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
@@ -23,7 +24,8 @@ app.use(session({
     cookie: { maxAge: 24 * 60 * 60 * 1000 }
 }));
 
-app.listen(3500, async () => {
+const PORT = process.env.PORT || 3500;
+app.listen(PORT, async () => {
     try {
         const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/notesdb";
         await mongoose.connect(MONGODB_URI);
@@ -31,7 +33,7 @@ app.listen(3500, async () => {
     } catch (err) {
         console.log("Error connecting to MongoDB:", err);
     }
-    console.log("Server is running on port 3500");
+    console.log(`Server is running on port ${PORT}`);
 });
 
 // =============================================
@@ -462,8 +464,18 @@ app.post("/notes/ai/generate", requireAuth, async (req, res) => {
         res.json({ content: answer });
     } catch (err) {
         console.error("AI Generation Error:", err);
-        res.status(500).json({ message: "Failed to generate content." });
     }
+});
+
+// =============================================
+// DEPLOYMENT STATIC FILES
+// =============================================
+// Serve the React frontend locally or in production
+app.use(express.static(path.join(__dirname, 'client/dist')));
+
+// Catch-all route to hand over routing to React Router
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client/dist', 'index.html'));
 });
 
  
