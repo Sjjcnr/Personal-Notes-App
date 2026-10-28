@@ -6,7 +6,7 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-9.x-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose_9-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![Gemini AI](https://img.shields.io/badge/Gemini_AI-2.5_Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
 
@@ -25,14 +25,12 @@ A modern, full-stack personal notes application with **AI superpowers**. Create,
 - **Rich Categories** — Organize notes into `Personal`, `Work`, or `Study` categories
 - **Tags System** — Add custom tags to notes for granular organization
 - **Pin Notes** — Pin important notes to keep them at the top
-- **Trash & Restore** — Soft-delete notes with the ability to restore them
+- **Trash & Restore** — Soft-delete notes (`isTrashed`) with restore support, alongside permanent deletion
 
 ### 🤖 AI-Powered Features (Google Gemini 2.5 Flash)
-- **✍️ Smart Rewrite** — Polish your notes with multiple writing styles:
-  - `Professional` — Formal, concise, and structured
-  - `Casual` — Friendly and easy to read
-  - `Expand` — Elaborate and add more detail
-  - `Summarize` — Condense into bullet points
+- **✍️ Smart Rewrite** — Polish notes with Gemini AI writing assistance:
+  - Quick UI action buttons: `Pro` (formal/structured), `Summarize` (bullet points), and `Fix Grammar` (grammar/readability)
+  - Backend API styles supported: `professional`, `casual`, `expand`, `summarize`, and default grammar fix
 - **🏷️ Auto-Tag** — AI automatically suggests the best category and up to 5 relevant tags
 - **📝 Content Generation** — Enter a title and let AI generate a well-structured note for you
 - **💬 AI Chat Assistant** — Ask questions about ALL your notes and get intelligent, context-aware answers
@@ -49,7 +47,7 @@ A modern, full-stack personal notes application with **AI superpowers**. Create,
 
 ### 🎨 User Interface
 - **Modern React SPA** — Smooth, responsive single-page application
-- **Markdown Rendering** — Notes support markdown with GitHub Flavored Markdown (GFM)
+- **Markdown Rendering** — Note cards and public shared notes render GitHub Flavored Markdown (GFM) via `react-markdown` (editor uses plain text)
 - **Toast Notifications** — Elegant feedback for all user actions
 - **Search & Filter** — Find notes by title, content, category, or tags
 - **Edit Modal** — Quick inline editing without leaving the notes view
@@ -62,9 +60,9 @@ A modern, full-stack personal notes application with **AI superpowers**. Create,
 | Technology | Purpose |
 |---|---|
 | **Express.js 5** | Web framework & REST API server |
-| **MongoDB + Mongoose 9** | NoSQL database with ODM |
+| **MongoDB + Mongoose 9** | NoSQL database with ODM (Mongoose v9.1.5) |
 | **bcryptjs** | Password hashing (salt rounds: 10) |
-| **express-session** | Server-side session management (24hr cookie) |
+| **express-session** | Server-side session management (MemoryStore, 24hr cookie) |
 | **@google/generative-ai** | Google Gemini AI integration |
 | **uuid** | Unique share link generation |
 | **dotenv** | Environment variable management |
@@ -98,15 +96,23 @@ cd Personal-Notes-App
 
 ### 2. Set Up Environment Variables
 
-Create a `.env` file in the root directory:
+Copy the example environment file or create a `.env` file in the root directory:
+
+```bash
+cp .env.example .env
+```
+
+Configure the environment variables in `.env`:
 
 ```env
 PORT=3500
+NODE_ENV=development
 MONGODB_URI=mongodb://127.0.0.1:27017/notesdb
+SESSION_SECRET=your_long_random_session_secret_min_32_chars
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-> 💡 **Tip:** For cloud deployment, replace `MONGODB_URI` with your MongoDB Atlas connection string.
+> 💡 **Tip:** For cloud deployment, replace `MONGODB_URI` with your MongoDB Atlas connection string. In production (`NODE_ENV=production`), `SESSION_SECRET` is required and must be at least 32 characters long. In development, a random per-process secret is generated if omitted.
 
 ### 3. Install Dependencies
 
@@ -172,8 +178,8 @@ npm start
 | `GET` | `/notes` | Get all user's notes |
 | `GET` | `/notes/tags` | Get unique tags for user |
 | `GET` | `/notes/:id` | Get a specific note |
-| `PUT` | `/notes/update/:id` | Update a note |
-| `DELETE` | `/notes/delete/:id` | Delete a note |
+| `PUT` | `/notes/update/:id` | Update a note (content, tags, pin status, or soft-delete trash flag) |
+| `DELETE` | `/notes/delete/:id` | Permanently delete a note |
 | `POST` | `/notes/share/:id` | Toggle note sharing |
 
 ### AI Routes (All Protected)
@@ -189,7 +195,7 @@ npm start
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `GET` | `/public/:shareId` | ❌ | View a shared note |
+| `GET` | `/public/:shareId` | ❌ | View shared note JSON payload (displayed at `/shared/:shareId`) |
 
 ---
 
@@ -199,6 +205,7 @@ npm start
 Personal-Notes-App/
 ├── index.js                  # Express server, routes, and middleware
 ├── package.json              # Server dependencies & scripts
+├── .env.example              # Environment variables template
 ├── .gitignore
 │
 ├── config/
@@ -208,7 +215,7 @@ Personal-Notes-App/
 │   ├── noteModel.js          # Mongoose schema: Note (title, content, category, tags, sharing, etc.)
 │   └── userModel.js          # Mongoose schema: User (username, email, password, timestamps)
 │
-├── public/                   # Legacy static HTML (login, register, index)
+├── public/                   # Legacy static HTML (Express serves client/dist in production)
 │   ├── index.html
 │   ├── login.html
 │   ├── register.html
@@ -285,8 +292,19 @@ Personal-Notes-App/
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `PORT` | No | `3500` | Server port |
+| `NODE_ENV` | No | `development` | Environment mode (`development` or `production`) |
 | `MONGODB_URI` | No | `mongodb://127.0.0.1:27017/notesdb` | MongoDB connection string |
+| `SESSION_SECRET` | In Production | Random per-process (dev) | Session signing secret (min. 32 characters in production) |
 | `GEMINI_API_KEY` | **Yes** | — | Google Gemini API key for AI features |
+
+---
+
+## 🔒 Security & Architecture Considerations
+
+- **Session Storage:** Uses `express-session` with the default in-memory `MemoryStore`. Sessions reset upon server restart and do not persist across multi-instance clusters.
+- **Session Secret:** In production (`NODE_ENV=production`), a `SESSION_SECRET` of at least 32 characters is enforced at server startup. In non-production environments, a random per-process secret is generated automatically if omitted.
+- **CORS Configuration:** Configured for local development (`http://localhost:5173`) with credentials enabled.
+- **Access Control:** `requireAuth` middleware verifies active user sessions; individual note modification routes rely on object ID lookups.
 
 ---
 
