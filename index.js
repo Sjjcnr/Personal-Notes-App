@@ -6,10 +6,26 @@ const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const NoteModel = require('./models/noteModel');
 const UserModel = require('./models/userModel');
 const genAI = require('./config/gemini');
 const app = express();
+
+// Session secret configuration
+let sessionSecret = process.env.SESSION_SECRET;
+
+if (process.env.NODE_ENV === 'production') {
+    if (!sessionSecret || sessionSecret.length < 32) {
+        console.error('FATAL: SESSION_SECRET environment variable is missing or shorter than 32 characters in production.');
+        process.exit(1);
+    }
+} else {
+    if (!sessionSecret) {
+        console.warn('WARNING: SESSION_SECRET is not set. Generating a random per-process secret for development.');
+        sessionSecret = crypto.randomBytes(32).toString('hex');
+    }
+}
 
 // Middleware
 app.use(express.json());
@@ -18,7 +34,7 @@ app.use(cors({
     credentials: true
 }));
 app.use(session({
-    secret: 'personal-notes-secret-key-2024',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: { maxAge: 24 * 60 * 60 * 1000 }
